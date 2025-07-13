@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jogo da Minhoca (Cobrinha) - Clássico</title>
+<style>
+  body {
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #fff;
+    user-select: none;
+  }
+  h1 {
+    margin-bottom: 10px;
+    text-shadow: 0 0 5px #0008;
+  }
+  #gameCanvas {
+    background: #121;
+    border: 4px solid #4caf50;
+    border-radius: 12px;
+    box-shadow: 0 0 20px #2e7d32;
+  }
+  #score {
+    margin-top: 12px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    text-shadow: 0 0 6px #0008;
+  }
+  #gameOver {
+    margin-top: 15px;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #ff4444;
+    text-shadow: 0 0 8px #0008;
+    display: none;
+  }
+  button {
+    margin-top: 12px;
+    padding: 10px 25px;
+    font-size: 1.2rem;
+    background-color: #4caf50;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 0 12px #2e7d32;
+    transition: background-color 0.3s ease;
+    display: none;
+  }
+  button:hover {
+    background-color: #388e3c;
+  }
+</style>
+</head>
+<body>
+
+<h1>Jogo da Minhoca</h1>
+<canvas id="gameCanvas" width="400" height="400"></canvas>
+<div id="score">Pontos: 0</div>
+<div id="gameOver">Game Over!</div>
+<button id="restartBtn">Jogar Novamente</button>
+
+<script>
+(() => {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const gameOverEl = document.getElementById('gameOver');
+  const restartBtn = document.getElementById('restartBtn');
+
+  const gridSize = 20; // tamanho do quadrado da cobrinha e maçã
+  const gridCount = canvas.width / gridSize; // quantos quadrados no canvas (20x20)
+
+  let snake = [
+    {x: 9, y: 9},
+  ];
+  let direction = {x: 0, y: 0}; // começa parada
+  let apple = {x: 0, y: 0};
+  let score = 0;
+  let speed = 7; // frames por segundo (velocidade)
+  let moveInterval;
+  let gameRunning = false;
+
+  // Sorteia a posição da maçã (fora da cobra)
+  function placeApple() {
+    do {
+      apple.x = Math.floor(Math.random() * gridCount);
+      apple.y = Math.floor(Math.random() * gridCount);
+    } while (snake.some(segment => segment.x === apple.x && segment.y === apple.y));
+  }
+
+  // Reinicia o jogo
+  function resetGame() {
+    snake = [{x: 9, y: 9}];
+    direction = {x: 0, y: 0};
+    score = 0;
+    speed = 7;
+    scoreEl.textContent = `Pontos: ${score}`;
+    gameOverEl.style.display = 'none';
+    restartBtn.style.display = 'none';
+    gameRunning = true;
+    placeApple();
+    clearInterval(moveInterval);
+    moveInterval = setInterval(gameLoop, 1000 / speed);
+  }
+
+  // Atualiza a posição da cobra
+  function updateSnake() {
+    const head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y};
+
+    // Verifica colisão com parede
+    if (head.x < 0 || head.x >= gridCount || head.y < 0 || head.y >= gridCount) {
+      endGame();
+      return;
+    }
+
+    // Verifica colisão com o corpo
+    if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+      endGame();
+      return;
+    }
+
+    snake.unshift(head); // adiciona cabeça nova
+
+    // Se comeu a maçã
+    if (head.x === apple.x && head.y === apple.y) {
+      score++;
+      scoreEl.textContent = `Pontos: ${score}`;
+
+      // Aumenta velocidade a cada 5 pontos
+      if (score % 5 === 0 && speed < 20) {
+        speed++;
+        clearInterval(moveInterval);
+        moveInterval = setInterval(gameLoop, 1000 / speed);
+      }
+
+      placeApple();
+    } else {
+      snake.pop(); // remove a cauda se não comeu
+    }
+  }
+
+  // Desenha tudo no canvas
+  function draw() {
+    // Fundo
+    ctx.fillStyle = '#121';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Maçã
+    ctx.fillStyle = '#ff4444';
+    ctx.beginPath();
+    const appleX = apple.x * gridSize + gridSize/2;
+    const appleY = apple.y * gridSize + gridSize/2;
+    const radius = gridSize / 2 * 0.8;
+    ctx.arc(appleX, appleY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cobrinha
+    for (let i = 0; i < snake.length; i++) {
+      const segment = snake[i];
+      ctx.fillStyle = i === 0 ? '#00ff00' : '#66ff66'; // cabeça mais brilhante
+      ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 1, gridSize -1);
+    }
+  }
+
+  // Game Over
+  function endGame() {
+    gameRunning = false;
+    gameOverEl.style.display = 'block';
+    restartBtn.style.display = 'inline-block';
+    clearInterval(moveInterval);
+  }
+
+  // Loop do jogo
+  function gameLoop() {
+    if (!gameRunning) return;
+    if (direction.x === 0 && direction.y === 0) return; // não começa sem direção
+    updateSnake();
+    draw();
+  }
+
+  // Controles do teclado
+  window.addEventListener('keydown', e => {
+    if (!gameRunning) return;
+    switch(e.key) {
+      case 'ArrowUp':
+      case 'w':
+      case 'W':
+        if (direction.y === 1) break; // não pode voltar pra trás
+        direction = {x: 0, y: -1};
+        break;
+      case 'ArrowDown':
+      case 's':
+      case 'S':
+        if (direction.y === -1) break;
+        direction = {x: 0, y: 1};
+        break;
+      case 'ArrowLeft':
+      case 'a':
+      case 'A':
+        if (direction.x === 1) break;
+        direction = {x: -1, y: 0};
+        break;
+      case 'ArrowRight':
+      case 'd':
+      case 'D':
+        if (direction.x === -1) break;
+        direction = {x: 1, y: 0};
+        break;
+    }
+  });
+
+  restartBtn.addEventListener('click', resetGame);
+
+  // Começa o jogo na tela pronta (mostra instrução)
+  function showStartScreen() {
+    ctx.fillStyle = '#121';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = '20px Verdana';
+    ctx.textAlign = 'center';
+    ctx.fillText('Use as setas para jogar', canvas.width / 2, canvas.height / 2 - 20);
+    ctx.fillText('Pressione qualquer seta para começar', canvas.width / 2, canvas.height / 2 + 20);
+  }
+
+  showStartScreen();
+
+  // Começa o jogo ao apertar qualquer seta
+  window.addEventListener('keydown', function startOnKey(e) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight','w','a','s','d','W','A','S','D'].includes(e.key)) {
+      window.removeEventListener('keydown', startOnKey);
+      // Define a direção inicial baseado na tecla
+      switch(e.key) {
+        case 'ArrowUp': case 'w': case 'W': direction = {x:0, y:-1}; break;
+        case 'ArrowDown': case 's': case 'S': direction = {x:0, y:1}; break;
+        case 'ArrowLeft': case 'a': case 'A': direction = {x:-1, y:0}; break;
+        case 'ArrowRight': case 'd': case 'D': direction = {x:1, y:0}; break;
+      }
+      resetGame();
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
