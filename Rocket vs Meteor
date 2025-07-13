@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dodge do Espaço</title>
+<style>
+  body {
+    margin: 0;
+    background: radial-gradient(circle at center, #000010, #000000 80%);
+    color: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background: #000011;
+    border: 2px solid #0ff;
+    border-radius: 10px;
+    box-shadow: 0 0 20px #0ff;
+  }
+  #score {
+    position: fixed;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2rem;
+    text-shadow: 0 0 10px #0ff;
+    font-weight: bold;
+  }
+  #gameOver {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #011f27dd;
+    padding: 30px 50px;
+    border-radius: 15px;
+    text-align: center;
+    font-size: 2rem;
+    display: none;
+    box-shadow: 0 0 30px #0ff;
+  }
+  #gameOver button {
+    margin-top: 20px;
+    font-size: 1.2rem;
+    padding: 12px 30px;
+    border: none;
+    background: #0ff;
+    color: #000;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 0 15px #0ff;
+    transition: background-color 0.3s ease;
+  }
+  #gameOver button:hover {
+    background: #0cc;
+  }
+</style>
+</head>
+<body>
+
+<div id="score">Tempo: 0.0s</div>
+<canvas id="gameCanvas" width="480" height="640"></canvas>
+
+<div id="gameOver">
+  <div id="finalScore"></div>
+  <button id="restartBtn">Jogar Novamente</button>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const gameOverEl = document.getElementById('gameOver');
+  const finalScoreEl = document.getElementById('finalScore');
+  const restartBtn = document.getElementById('restartBtn');
+
+  const WIDTH = canvas.width;
+  const HEIGHT = canvas.height;
+
+  // Nave
+  const ship = {
+    width: 40,
+    height: 60,
+    x: WIDTH / 2 - 20,
+    y: HEIGHT - 80,
+    speed: 7,
+    movingLeft: false,
+    movingRight: false,
+  };
+
+  // Meteoros
+  const meteorCount = 6;
+  let meteors = [];
+
+  let gameRunning = false;
+  let startTime = 0;
+  let elapsedTime = 0;
+  let meteorSpeed = 3;
+
+  function createMeteors() {
+    meteors = [];
+    for (let i = 0; i < meteorCount; i++) {
+      meteors.push({
+        x: Math.random() * (WIDTH - 50),
+        y: -Math.random() * HEIGHT,
+        size: 30 + Math.random() * 20,
+        speed: meteorSpeed + Math.random() * 2,
+      });
+    }
+  }
+
+  function drawShip() {
+    ctx.fillStyle = '#0ff';
+    ctx.beginPath();
+    // Triângulo da nave apontando pra cima
+    ctx.moveTo(ship.x + ship.width / 2, ship.y);
+    ctx.lineTo(ship.x, ship.y + ship.height);
+    ctx.lineTo(ship.x + ship.width, ship.y + ship.height);
+    ctx.closePath();
+    ctx.fill();
+    // Luz traseira
+    ctx.fillStyle = '#00bcd4';
+    ctx.fillRect(ship.x + ship.width / 2 - 6, ship.y + ship.height, 12, 10);
+  }
+
+  function drawMeteor(m) {
+    ctx.fillStyle = '#f44336';
+    ctx.beginPath();
+    ctx.arc(m.x + m.size/2, m.y + m.size/2, m.size/2, 0, Math.PI * 2);
+    ctx.fill();
+    // Detalhes
+    ctx.fillStyle = '#d32f2f';
+    ctx.beginPath();
+    ctx.arc(m.x + m.size/3, m.y + m.size/3, m.size/8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function moveShip() {
+    if (ship.movingLeft) {
+      ship.x -= ship.speed;
+      if (ship.x < 0) ship.x = 0;
+    }
+    if (ship.movingRight) {
+      ship.x += ship.speed;
+      if (ship.x + ship.width > WIDTH) ship.x = WIDTH - ship.width;
+    }
+  }
+
+  function moveMeteors() {
+    for (const m of meteors) {
+      m.y += m.speed;
+      if (m.y > HEIGHT) {
+        m.y = -m.size;
+        m.x = Math.random() * (WIDTH - m.size);
+        m.speed = meteorSpeed + Math.random() * 2;
+      }
+    }
+  }
+
+  function checkCollision() {
+    for (const m of meteors) {
+      if (
+        ship.x < m.x + m.size &&
+        ship.x + ship.width > m.x &&
+        ship.y < m.y + m.size &&
+        ship.y + ship.height > m.y
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function updateScore() {
+    elapsedTime = (performance.now() - startTime) / 1000;
+    scoreEl.textContent = `Tempo: ${elapsedTime.toFixed(1)}s`;
+  }
+
+  function gameLoop() {
+    if (!gameRunning) return;
+
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+    moveShip();
+    moveMeteors();
+
+    drawShip();
+    for (const m of meteors) {
+      drawMeteor(m);
+    }
+
+    updateScore();
+
+    if (checkCollision()) {
+      endGame();
+      return;
+    }
+
+    // Aumenta a velocidade a cada 10 segundos
+    if (elapsedTime > 0 && Math.floor(elapsedTime) % 10 === 0) {
+      meteorSpeed += 0.002;
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  function startGame() {
+    gameRunning = true;
+    meteorSpeed = 3;
+    ship.x = WIDTH / 2 - ship.width / 2;
+    startTime = performance.now();
+    createMeteors();
+    gameOverEl.style.display = 'none';
+    scoreEl.style.display = 'block';
+    gameLoop();
+  }
+
+  function endGame() {
+    gameRunning = false;
+    finalScoreEl.textContent = `Você sobreviveu ${elapsedTime.toFixed(1)} segundos!`;
+    gameOverEl.style.display = 'block';
+    scoreEl.style.display = 'none';
+  }
+
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+      ship.movingLeft = true;
+    } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+      ship.movingRight = true;
+    }
+  });
+
+  window.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+      ship.movingLeft = false;
+    } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+      ship.movingRight = false;
+    }
+  });
+
+  restartBtn.addEventListener('click', () => {
+    startGame();
+  });
+
+  // Começa o jogo na primeira carga
+  startGame();
+})();
+</script>
+
+</body>
+</html>
