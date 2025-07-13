@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Click Frenzy</title>
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    color: #0ff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    user-select: none;
+  }
+  h1 {
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px #0ff;
+  }
+  #score, #timer {
+    font-size: 2.5rem;
+    margin: 10px;
+    text-shadow: 0 0 15px #0ff;
+  }
+  #clickBtn {
+    padding: 30px 60px;
+    font-size: 2rem;
+    background: #0ff;
+    border: none;
+    border-radius: 15px;
+    color: #000;
+    cursor: pointer;
+    box-shadow: 0 0 30px #0ff;
+    transition: background-color 0.3s ease;
+    user-select: none;
+  }
+  #clickBtn:active {
+    background: #0cc;
+  }
+  #startBtn, #restartBtn {
+    margin-top: 25px;
+    padding: 15px 40px;
+    font-size: 1.5rem;
+    background: #0ff;
+    border: none;
+    border-radius: 15px;
+    color: #000;
+    cursor: pointer;
+    box-shadow: 0 0 30px #0ff;
+    font-weight: bold;
+    user-select: none;
+    transition: background-color 0.3s ease;
+  }
+  #startBtn:hover, #restartBtn:hover {
+    background: #0cc;
+  }
+  #gameOver {
+    margin-top: 30px;
+    font-size: 2rem;
+    display: none;
+    text-align: center;
+    text-shadow: 0 0 15px #0ff;
+  }
+</style>
+</head>
+<body>
+
+<h1>Click Frenzy</h1>
+<div id="score">Cliques: 0</div>
+<div id="timer">Tempo: 10s</div>
+
+<button id="clickBtn" disabled>Clique Aqui!</button>
+<button id="startBtn">Começar</button>
+
+<div id="gameOver">
+  <p>Fim de jogo! Você clicou <span id="finalScore">0</span> vezes!</p>
+  <button id="restartBtn">Jogar Novamente</button>
+</div>
+
+<script>
+(() => {
+  const clickBtn = document.getElementById('clickBtn');
+  const startBtn = document.getElementById('startBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const scoreEl = document.getElementById('score');
+  const timerEl = document.getElementById('timer');
+  const gameOverEl = document.getElementById('gameOver');
+  const finalScoreEl = document.getElementById('finalScore');
+
+  let score = 0;
+  let timeLeft = 10;
+  let timerId = null;
+
+  function updateTimer() {
+    timeLeft--;
+    timerEl.textContent = `Tempo: ${timeLeft}s`;
+    if (timeLeft <= 0) {
+      endGame();
+    }
+  }
+
+  function startGame() {
+    score = 0;
+    timeLeft = 10;
+    scoreEl.textContent = 'Cliques: 0';
+    timerEl.textContent = `Tempo: ${timeLeft}s`;
+    clickBtn.disabled = false;
+    startBtn.style.display = 'none';
+    gameOverEl.style.display = 'none';
+
+    timerId = setInterval(updateTimer, 1000);
+  }
+
+  function endGame() {
+    clearInterval(timerId);
+    clickBtn.disabled = true;
+    finalScoreEl.textContent = score;
+    gameOverEl.style.display = 'block';
+    startBtn.style.display = 'none';
+  }
+
+  clickBtn.addEventListener('click', () => {
+    score++;
+    scoreEl.textContent = `Cliques: ${score}`;
+  });
+
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', () => {
+    gameOverEl.style.display = 'none';
+    startBtn.style.display = 'inline-block';
+  });
+})();
+</script>
+
+</body>
+</html>
